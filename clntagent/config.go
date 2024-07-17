@@ -1,3 +1,7 @@
+/*
+Copyright © 2024 The Single Tunnel Authors - singletunnel@spotai.co
+*/
+
 package clntagent
 
 import (
