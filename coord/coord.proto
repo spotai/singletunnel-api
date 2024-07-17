@@ -1,0 +1,162 @@
+syntax = "proto3";
+
+option go_package = "github.com/spotai/singletunnel/pkg/coord";
+
+// Coordination package
+package coord;
+
+message ServerInfo {
+  reserved 6;
+  reserved "wg";
+  string id = 1;
+  string egressIp = 2;
+  uint32 egressPort = 3;
+  string egressProtocol = 4;
+  string ingressIp = 5;
+  // WireguardInfo wg = 6;
+  string wgPublicKey = 7;
+}
+
+message WireguardInfo {
+  string publicKey = 1;
+  string cidr = 2;
+}
+
+message WireguardConfig {
+  string localIp = 1;
+  repeated WireguardPeer peers = 2;
+  uint32 listenPort = 3;
+}
+
+message WireguardPeer {
+  string name = 1;
+  string publicKey = 2;
+  string endpoint = 3;
+  repeated string allowedIps = 4;
+  uint32 keepAliveInterval = 5;
+}
+
+message CertConfig {
+  string cert = 1;
+  string key = 2;
+  optional string ca = 3; 
+}
+
+message OpenVpnServerConfig {
+  CertConfig certInfo = 1;
+  string dhParams = 2;
+}
+
+message OpenVpnClientConfig {
+  CertConfig certInfo = 1;
+  string serverHost = 2;
+  uint32 serverPort = 3;
+  string serverProtocol = 4;
+}
+
+message IngressInfo {
+  reserved 1;
+  uint32 localPort = 2;
+  bool   isTls = 3;
+  string tlsServerName = 4;
+  string fqdnSuffix = 5;
+}
+
+message Route {
+  string cidr = 1;
+  string description = 2;
+}
+
+message ClientInfo {
+  reserved 5,6;
+  string id = 1;
+  repeated IngressInfo ingresses = 2;
+  uint32 proxyBasePort = 3;
+  string wgPublicKey = 4;
+  // repeated Route routesToDelete = 5;
+  // repeated Route routesToAdd = 6;
+}
+
+message ServerConfig {
+  optional OpenVpnServerConfig openVpnServerConfig = 1;
+  repeated ClientInfo clients = 2;
+  optional WireguardConfig wg = 3;
+  repeated Route routes = 4;
+}
+
+message ServersInfo {
+  repeated ServerInfo servers = 1;
+}
+
+message ConnectionSpec {
+  ClientInfo clientInfo = 1;
+  string serverId = 2;
+}
+
+message ClientIngressConfig {
+  string fqdn = 1;
+  CertConfig certConfig = 2;
+}
+
+message ClientConfig {
+  reserved 1;
+  //optional WireguardInfo wg = 1;
+  optional OpenVpnClientConfig openVpn = 2;
+  repeated ClientIngressConfig ingresses = 3;
+  optional WireguardConfig wg = 4;
+  repeated Route excludedRoutes = 5;
+}
+
+message WaitEventSpec {
+  string clientId = 1;
+}
+
+enum EventType {
+  None = 0;
+  StateChanged = 1;
+}
+
+message Event {
+  EventType type = 1;
+}
+
+message GetServerConfigRequest {
+  ServerInfo info = 1;
+  uint64 revision = 2;
+}
+
+message GetServerConfigResponse {
+  optional ServerConfig config = 1;
+  uint64 revision = 2;
+}
+
+message ShutdownNotification {
+  string serverId = 1;
+}
+
+message ShutdownResponse {
+}
+
+message DisconnectRequest {
+    string clientId = 1;
+}
+
+message DisconnectResponse {
+}
+
+service ForServers {
+  // Accepts a request containing a ServerInfo describing the server,
+  // then returns a response containing a ServerConfig describing how
+  // the server needs to configure its networking services to accept the clients
+  // that are connecting/connected to it.
+  rpc GetServerConfig(GetServerConfigRequest) returns (GetServerConfigResponse) {}
+  rpc ShuttingDown(ShutdownNotification) returns (ShutdownResponse) {}
+}
+
+service ForClients {
+  rpc ListServers(ClientInfo) returns (ServersInfo) {}
+  rpc Connect(ConnectionSpec) returns (ClientConfig) {}
+  // Disconnects the client from any servers it's currently connected to.
+  rpc Disconnect(DisconnectRequest) returns (DisconnectResponse) {}
+  rpc WaitEvent(WaitEventSpec) returns (Event) {}
+}
