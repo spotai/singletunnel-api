@@ -26,6 +26,7 @@ message WireguardConfig {
   string localIp = 1;
   repeated WireguardPeer peers = 2;
   uint32 listenPort = 3;
+  bool tableOff = 4;
 }
 
 message WireguardPeer {
